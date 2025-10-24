@@ -16,4 +16,4 @@ To create the database from scratch, run the files in the following order:
 
 ## Testing
 
-After running all the setup scripts (1-5), you can run `6_final_tests.sql` to verify that the triggers, functions, and procedures are working as expected.
+After running all the setup scripts (1-5), you can run `6_tests.sql` to verify that the triggers, functions, and procedures are working as expected.
