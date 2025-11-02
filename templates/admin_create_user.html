@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal - Create User</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0 flex items-center">
+                    <a href="/" class="flex items-center">
+                        <svg class="h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                        </svg>
+                        <span class="ml-2 text-2xl font-bold text-indigo-600">MediQuick</span>
+                    </a>
+                </div>
+                <nav class="hidden md:flex md:items-center md:space-x-6">
+                    <a href="/" class="text-base font-medium text-gray-600 hover:text-indigo-600">&larr; Back to Home</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-6 text-center">Admin Portal</h1>
+        <p class="text-center text-gray-600 mb-8">Create new users for each role and add new medicines.</p>
+
+        <!-- Result Message -->
+        <div id="result-message" class="hidden p-4 rounded-md mb-6 text-center"></div>
+
+        <!-- Create New Doctor -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Create New Doctor</h2>
+            <form id="doctor-form" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="doc_name" class="block text-sm font-medium text-gray-700">Doctor Name</label>
+                        <input type="text" id="doc_name" placeholder="e.g., Dr. Suresh Iyer" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="doc_phone" class="block text-sm font-medium text-gray-700">Phone</label>
+                        <input type="tel" id="doc_phone" placeholder="e.g., 9898989898" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="doc_email" class="block text-sm font-medium text-gray-700">Email (Username)</label>
+                        <input type="email" id="doc_email" placeholder="e.g., doctor@mediquick.com" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="doc_password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input type="password" id="doc_password" placeholder="Set a password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Create Doctor</button>
+            </form>
+        </div>
+
+        <!-- Create New Pharmacy -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Create New Pharmacy</h2>
+            <form id="pharmacy-form" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="pharm_name" placeholder="Pharmacy Name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="text" id="pharm_license" placeholder="License No" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="tel" id="pharm_phone" placeholder="Contact Phone" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="text" id="pharm_city" placeholder="City" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="text" id="pharm_state" placeholder="State" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="text" id="pharm_street" placeholder="Street Address" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm col-span-1 md:col-span-2">
+                    <input type="email" id="pharm_email" placeholder="Email (Username)" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="password" id="pharm_password" placeholder="Set a password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-indigo-700">Create Pharmacy</button>
+            </form>
+        </div>
+
+        <!-- Create New Delivery Agent -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Create New Delivery Agent</h2>
+            <form id="agent-form" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="agent_name" placeholder="Agent Name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="tel" id="agent_phone" placeholder="Phone" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="email" id="agent_email" placeholder="Email (Username)" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="password" id="agent_password" placeholder="Set a password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-indigo-700">Create Delivery Agent</button>
+            </form>
+        </div>
+
+        <!-- (Req 4c) CRUD: Create Medicine -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">(Req 4c) Create New Medicine</h2>
+            <form id="medicine-form" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="medName" placeholder="Medicine Name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="text" id="medType" placeholder="Type (e.g., Tablet)" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                </div>
+                <textarea id="medDesc" placeholder="Description" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"></textarea>
+                <div class="flex items-center">
+                    <input type="checkbox" id="medPresc" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                    <label for="medPresc" class="ml-2 block text-sm text-gray-900">Requires Prescription?</label>
+                </div>
+                <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-green-700">Add Medicine to Database</button>
+            </form>
+        </div>
+
+    </main>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:5000/api';
+        const resultEl = document.getElementById('result-message');
+
+        function showResult(message, isError = false) {
+            resultEl.textContent = message;
+            resultEl.classList.remove('hidden', 'bg-green-100', 'text-green-700', 'bg-red-100', 'text-red-700');
+            if (isError) {
+                resultEl.classList.add('bg-red-100', 'text-red-700');
+            } else {
+                resultEl.classList.add('bg-green-100', 'text-green-700');
+            }
+            window.scrollTo(0, 0); // Scroll to top to show message
+        }
+
+        // --- Create Doctor ---
+        document.getElementById('doctor-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('doc_name').value,
+                phone: document.getElementById('doc_phone').value,
+                email: document.getElementById('doc_email').value,
+                password: document.getElementById('doc_password').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/create_doctor`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to create doctor');
+                
+                showResult(`Success: Created Doctor (ID: ${data.doc_id}) and User (ID: ${data.user_id})`);
+                e.target.reset();
+            } catch (error) {
+                showResult(`Error: ${error.message}`, true);
+            }
+        });
+
+        // --- Create Pharmacy ---
+        document.getElementById('pharmacy-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('pharm_name').value,
+                license: document.getElementById('pharm_license').value,
+                phone: document.getElementById('pharm_phone').value,
+                city: document.getElementById('pharm_city').value,
+                state: document.getElementById('pharm_state').value,
+                street: document.getElementById('pharm_street').value,
+                email: document.getElementById('pharm_email').value,
+                password: document.getElementById('pharm_password').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/create_pharmacy`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to create pharmacy');
+                
+                showResult(`Success: Created Pharmacy (ID: ${data.pharm_id}) and User (ID: ${data.user_id})`);
+                e.target.reset();
+            } catch (error) {
+                showResult(`Error: ${error.message}`, true);
+            }
+        });
+
+        // --- Create Agent ---
+        document.getElementById('agent-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('agent_name').value,
+                phone: document.getElementById('agent_phone').value,
+                email: document.getElementById('agent_email').value,
+                password: document.getElementById('agent_password').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/create_agent`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to create agent');
+                
+                showResult(`Success: Created Agent (ID: ${data.agent_id}) and User (ID: ${data.user_id})`);
+                e.target.reset();
+            } catch (error) {
+                showResult(`Error: ${error.message}`, true);
+            }
+        });
+
+        // --- Create Medicine ---
+        document.getElementById('medicine-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                med_name: document.getElementById('medName').value,
+                type: document.getElementById('medType').value,
+                description: document.getElementById('medDesc').value,
+                prescription_required: document.getElementById('medPresc').checked
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/medicines`, { // Uses the existing /api/medicines POST route
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to create medicine');
+                
+                showResult(`Success: Created Medicine (${payload.med_name}) with ID: ${data.id}`);
+                e.target.reset();
+            } catch (error) {
+                showResult(`Error: ${error.message}`, true);
+            }
+        });
+
+    </script>
+</body>
+</html>
+

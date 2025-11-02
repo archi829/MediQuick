@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharmacy Dashboard - MediQuick</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Get Pharmacy ID from URL parameter -->
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const PHARMACY_ID = urlParams.get('id') || 1; // Fallback to 1 for demo if no ID provided
+        const API_BASE = 'http://127.0.0.1:5000/api';
+    </script>
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+            <h1 class="text-2xl font-bold text-gray-900">Pharmacy Dashboard</h1>
+            <a href="/" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">Log Out</a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8" x-data="{ tab: 'orders' }">
+        <!-- Tabs -->
+        <div class="border-b border-gray-200 mb-6">
+            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                <button @click="tab = 'orders'; loadOrders();" :class="{ 'border-indigo-500 text-indigo-600': tab === 'orders', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'orders' }"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    Pending Orders
+                </button>
+                <button @click="tab = 'stock'; loadStock();" :class="{ 'border-indigo-500 text-indigo-600': tab === 'stock', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'stock' }"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    (Req 4c: CRUD) Stock Management
+                </button>
+                <button @click="tab = 'reports'" :class="{ 'border-indigo-500 text-indigo-600': tab === 'reports', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'reports' }"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    Database Reports
+                </button>
+            </nav>
+        </div>
+
+        <!-- Result Message -->
+        <div id="result-message" class="mb-4 p-4 rounded-md hidden"></div>
+
+        <!-- Orders Tab -->
+        <div x-show="tab === 'orders'" x-cloak>
+            <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                <ul role="list" class="divide-y divide-gray-200" id="orders-list">
+                    <!-- JS will populate this -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Stock Tab -->
+        <div x-show="tab === 'stock'" x-cloak>
+            <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                <ul role="list" class="divide-y divide-gray-200" id="stock-list">
+                    <!-- JS will populate this -->
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Reports Tab -->
+        <div x-show="tab === 'reports'" x-cloak>
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Database Reports</h2>
+            <!-- Req 4f: Aggregate Query -->
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">(Req 4f) AGGREGATE Query</h3>
+                <p class="text-sm text-gray-600 mb-4">"Get total sales and order count for each pharmacy."</p>
+                <button onclick="runReport('aggregate_query')" class="bg-gray-700 text-white p-2 rounded-md hover:bg-gray-800 w-full">
+                    Run Aggregate Report
+                </button>
+            </div>
+            
+            <!-- Req 4d: Nested Query -->
+            <div class="bg-white shadow rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">(Req 4d) NESTED Query (Subquery)</h3>
+                <p class="text-sm text-gray-600 mb-4">"Find all medicines that have NOT been sold yet."</p>
+                <button onclick="runReport('nested_query')" class="bg-gray-700 text-white p-2 rounded-md hover:bg-gray-800 w-full">
+                    Run Nested Report
+                </button>
+            </div>
+            
+            <!-- Results Area -->
+            <div class="mt-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Query Results:</h3>
+                <pre id="results" class="bg-gray-900 text-white p-4 rounded-md">{ "message": "Query results will appear here..." }</pre>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const messageEl = document.getElementById('result-message');
+        const ordersListEl = document.getElementById('orders-list');
+        const stockListEl = document.getElementById('stock-list');
+        const resultsEl = document.getElementById('results');
+
+        function showMessage(message, isError) {
+            messageEl.textContent = message;
+            messageEl.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+            if (isError) {
+                messageEl.classList.add('bg-red-100', 'text-red-800');
+            } else {
+                messageEl.classList.add('bg-green-100', 'text-green-800');
+            }
+            messageEl.classList.remove('hidden');
+            setTimeout(() => messageEl.classList.add('hidden'), 3000);
+        }
+
+        async function loadOrders() {
+            ordersListEl.innerHTML = `<li><div class="p-4"><p class="text-gray-500">Loading orders...</p></div></li>`;
+            try {
+                const response = await fetch(`${API_BASE}/pharmacy/orders?id=${PHARMACY_ID}`);
+                if (!response.ok) throw new Error('Failed to fetch orders');
+                const orders = await response.json();
+
+                if (orders.length === 0) {
+                    ordersListEl.innerHTML = `<li><div class="p-4"><p class="text-gray-500">No pending orders found.</p></div></li>`;
+                    return;
+                }
+
+                ordersListEl.innerHTML = orders.map(o => `
+                    <li class="p-4 hover:bg-gray-50">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-indigo-600 truncate">Order #${o.order_id}-${o.sub_order_id}</p>
+                                <p class="mt-1 text-sm text-gray-700">Customer: ${o.first_name} ${o.last_name || ''}</p>
+                                <p class="mt-1 text-sm text-gray-500">Address: ${o.address_street || 'N/A'}, ${o.address_city || 'N/A'}</p>
+                                <p class="mt-1 text-sm font-bold text-gray-800">Total: ₹${o.sub_total}</p>
+                            </div>
+                            <div class="mt-4 sm:mt-0 sm:ml-4 flex-shrink-0 flex items-center space-x-2">
+                                <span class="inline-block bg-yellow-100 text-yellow-800 text-sm font-medium px-3 py-1 rounded-full">${o.status}</span>
+                                <select id="status-${o.order_id}-${o.sub_order_id}" class="rounded-md border-gray-300 text-sm">
+                                    <option value="Processing" ${o.status === 'Processing' ? 'selected' : ''}>Processing</option>
+                                    <option value="Assigned" ${o.status === 'Assigned' ? 'selected' : ''}>Assigned</option>
+                                    <option value="Shipped" ${o.status === 'Shipped' ? 'selected' : ''}>Shipped</option>
+                                    <option value="Delivered" ${o.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                                </select>
+                                <button onclick="updateOrderStatus(${o.order_id}, ${o.sub_order_id})" class="px-3 py-1 text-sm font-medium rounded-full text-white bg-blue-600 hover:bg-blue-700">
+                                    Update
+                                </button>
+                            </div>
+                        </div>
+                    </li>
+                `).join('');
+            } catch (error) {
+                console.error("Error loading orders:", error);
+                ordersListEl.innerHTML = `<li><div class="p-4"><p class="text-red-500">Error loading orders.</p></div></li>`;
+            }
+        }
+
+        async function updateOrderStatus(orderId, subOrderId) {
+            const newStatus = document.getElementById(`status-${orderId}-${subOrderId}`).value;
+            try {
+                const response = await fetch(`${API_BASE}/pharmacy/orders/status`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        order_id: orderId,
+                        sub_order_id: subOrderId,
+                        status: newStatus
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) throw data;
+                showMessage(data.message, false);
+                loadOrders(); // Refresh list
+            } catch (error) {
+                console.error("Error updating status:", error);
+                showMessage(error.error || 'Failed to update status.', true);
+            }
+        }
+
+        async function loadStock() {
+            stockListEl.innerHTML = `<li><div class="p-4"><p class="text-gray-500">Loading stock...</p></div></li>`;
+            try {
+                const response = await fetch(`${API_BASE}/pharmacy/stock?id=${PHARMACY_ID}`);
+                if (!response.ok) throw new Error('Failed to fetch stock');
+                const stock = await response.json();
+
+                if (stock.length === 0) {
+                    stockListEl.innerHTML = `<li><div class="p-4"><p class="text-gray-500">No stock items found.</p></div></li>`;
+                    return;
+                }
+
+                stockListEl.innerHTML = stock.map(item => `
+                    <li class="p-4 hover:bg-gray-50">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-indigo-600 truncate">${item.med_name} (ID: ${item.med_id})</p>
+                            </div>
+                            <div class="mt-4 sm:mt-0 sm:ml-4 flex-shrink-0 flex items-center space-x-2">
+                                <label class="text-sm">Stock:</label>
+                                <input type="number" id="stock-${item.med_id}" value="${item.current_stock}" class="w-20 p-1 border rounded-md text-sm">
+                                <label class="text-sm">Price:</label>
+                                <input type="number" step="0.01" id="price-${item.med_id}" value="${item.price}" class="w-24 p-1 border rounded-md text-sm">
+                                <button onclick="updateStock(${item.med_id})" class="px-3 py-1 text-sm font-medium rounded-full text-white bg-green-600 hover:bg-green-700">
+                                    Save
+                                </button>
+                            </div>
+                        </div>
+                    </li>
+                `).join('');
+            } catch (error) {
+                console.error("Error loading stock:", error);
+                stockListEl.innerHTML = `<li><div class="p-4"><p class="text-red-500">Error loading stock.</p></div></li>`;
+            }
+        }
+
+        async function updateStock(medId) {
+            const newStock = document.getElementById(`stock-${medId}`).value;
+            const newPrice = document.getElementById(`price-${medId}`).value;
+            try {
+                const response = await fetch(`${API_BASE}/pharmacy/stock/update?id=${PHARMACY_ID}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        med_id: medId,
+                        current_stock: parseInt(newStock),
+                        price: parseFloat(newPrice)
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) throw data;
+                showMessage(data.message, false);
+            } catch (error) {
+                console.error("Error updating stock:", error);
+                showMessage(error.error || 'Failed to update stock.', true);
+            }
+        }
+        
+        async function runReport(reportName) {
+            resultsEl.textContent = "Loading...";
+            try {
+                const response = await fetch(`${API_BASE}/reports?name=${reportName}`);
+                const data = await response.json();
+                if (!response.ok) throw data;
+                resultsEl.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                console.error("API Error:", error);
+                resultsEl.textContent = JSON.stringify(error, null, 2);
+            }
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => loadOrders());
+    </script>
+</body>
+</html>
+

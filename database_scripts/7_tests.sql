@@ -32,6 +32,15 @@ SET SQL_SAFE_UPDATES = 1;
 -- =====================================================================
 
 
+-- =====================================================================
+-- NOTE: This test script assumes the database has been populated with
+-- data from 3_data_population.sql, including User accounts:
+-- - Customers: cust1@gmail.com, cust2@gmail.com, cust3@gmail.com (passwords: cust1, cust2, cust3)
+-- - Doctors: doc1@gmail.com, doc2@gmail.com (passwords: doc1, doc2)
+-- - Pharmacies: pharm1@gmail.com, pharm2@gmail.com, pharm3@gmail.com (passwords: pharm1, pharm2, pharm3)
+-- - Agents: agent1@gmail.com, agent2@gmail.com, agent3@gmail.com (passwords: agent1, agent2, agent3)
+-- =====================================================================
+
 -- =====================================
 -- Test 1: trg_check_medicine_substitute (UNCHANGED)
 -- =====================================
@@ -259,6 +268,7 @@ SELECT * FROM Prescription WHERE presc_id = @test_presc_id;
 
 -- Step 2: Test successful verification
 -- We use doc_id = 1 (Dr. Suresh Iyer from data population)
+-- Login credentials: username='doc1@gmail.com', password='doc1'
 CALL sp_verify_prescription(@test_presc_id, 1, 'Verified');
 
 -- Verify update
@@ -267,6 +277,8 @@ SELECT * FROM Prescription WHERE presc_id = @test_presc_id;
 
 -- Step 3: Test that a re-verification fails (procedure only updates 'To Be Verified')
 -- Attempt to change status from 'Verified' to 'Rejected'
+-- We use doc_id = 2 (Dr. Ritu Bansal from data population)
+-- Login credentials: username='doc2@gmail.com', password='doc2'
 CALL sp_verify_prescription(@test_presc_id, 2, 'Rejected');
 
 -- Verify no change

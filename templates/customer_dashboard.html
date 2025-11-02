@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Dashboard - MediQuick</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Get Customer ID from URL parameter -->
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const CUSTOMER_ID = urlParams.get('id') || 1; // Fallback to 1 for demo if no ID provided
+        const API_BASE = 'http://127.0.0.1:5000/api';
+    </script>
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <h1 class="text-2xl font-bold text-gray-900">Customer Dashboard</h1>
+                <nav class="flex space-x-4">
+                    <a id="nav-dashboard" href="/dashboard" class="font-medium text-indigo-600">Search & Cart</a>
+                    <a id="nav-orders" href="/orders" class="font-medium text-gray-500 hover:text-gray-700">My Orders</a>
+                    <a href="/" class="text-sm font-medium text-gray-500 hover:text-gray-700">Log Out</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8" x-data="{ tab: 'search' }">
+        <!-- Tabs -->
+        <div class="border-b border-gray-200 mb-6">
+            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                <button @click="tab = 'search'" :class="{ 'border-indigo-500 text-indigo-600': tab === 'search', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'search' }"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    Search Medicines
+                </button>
+                <button @click="tab = 'cart'; loadCart();" :class="{ 'border-indigo-500 text-indigo-600': tab === 'cart', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': tab !== 'cart' }"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    My Cart
+                </button>
+            </nav>
+        </div>
+
+        <!-- Result Message -->
+        <div id="result-message" class="mb-4 p-4 rounded-md hidden"></div>
+
+        <!-- Search Tab -->
+        <div x-show="tab === 'search'" x-cloak>
+            <!-- Search Bar -->
+            <div class="relative mb-6">
+                <input type="search" id="medicineSearch"
+                    class="block w-full px-4 py-3 pr-10 border border-gray-300 rounded-full shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    placeholder="Search for medicines (e.g., Paracetamol)" oninput="searchMedicines()">
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" /></svg>
+                </div>
+            </div>
+            <!-- Medicine List -->
+            <div id="medicine-list" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <!-- JS will populate this -->
+            </div>
+        </div>
+
+        <!-- Cart Tab -->
+        <div x-show="tab === 'cart'" x-cloak>
+            <div class="bg-white shadow rounded-lg overflow-hidden">
+                <div class="p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Your Cart</h2>
+                    <div id="cart-items" class="divide-y divide-gray-200">
+                        <!-- JS will populate this -->
+                    </div>
+                    <div id="cart-summary" class="mt-6 pt-6 border-t border-gray-200">
+                        <!-- JS will populate this -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const messageEl = document.getElementById('result-message');
+        const medicineListEl = document.getElementById('medicine-list');
+
+        function showMessage(message, isError) {
+            messageEl.textContent = message;
+            messageEl.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+            if (isError) {
+                messageEl.classList.add('bg-red-100', 'text-red-800');
+            } else {
+                messageEl.classList.add('bg-green-100', 'text-green-800');
+            }
+            messageEl.classList.remove('hidden');
+            setTimeout(() => messageEl.classList.add('hidden'), 3000);
+        }
+
+        async function searchMedicines() {
+            const query = document.getElementById('medicineSearch').value;
+            try {
+                const response = await fetch(`${API_BASE}/medicines?q=${query}`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const medicines = await response.json();
+                renderMedicines(medicines);
+            } catch (error) {
+                console.error("Error fetching medicines:", error);
+                medicineListEl.innerHTML = `<p class="text-red-500">Error loading medicines.</p>`;
+            }
+        }
+
+        function renderMedicines(medicines) {
+            if (!medicines || medicines.length === 0) {
+                medicineListEl.innerHTML = `<p class="text-gray-500">No medicines found.</p>`; return;
+            }
+            medicineListEl.innerHTML = medicines.map(med => `
+                <div class="bg-white p-6 rounded-lg shadow-md flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">${med.med_name}</h3>
+                        <p class="text-sm text-gray-600">${med.type || 'N/A'}</p>
+                        <p class="text-sm text-gray-800 mt-2">From ₹${med.min_price}</p>
+                        <p class="text-sm text-gray-500">Stock: ${med.total_stock > 0 ? med.total_stock : 'Out of Stock'}</p>
+                    </div>
+                    <div class="mt-4">
+                        <span class="inline-block bg-${med.prescription_required ? 'red' : 'green'}-100 text-${med.prescription_required ? 'red' : 'green'}-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                            ${med.prescription_required ? 'Prescription Required' : 'Over-the-Counter'}
+                        </span>
+                    </div>
+                    <button ${med.total_stock <= 0 ? 'disabled' : ''} 
+                            onclick="addToCart(${med.med_id})" 
+                            class="mt-4 w-full p-2 rounded-md text-sm font-medium 
+                                   ${med.total_stock > 0 ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}">
+                        Add to Cart
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function addToCart(medId) {
+            try {
+                const response = await fetch(`${API_BASE}/customer/cart?id=${CUSTOMER_ID}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        med_id: medId,
+                        qty: 1
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) throw data;
+                showMessage('Item added to cart!', false);
+            } catch (error) {
+                console.error("Error adding to cart:", error);
+                showMessage(error.error || 'Failed to add item.', true);
+            }
+        }
+
+        async function loadCart() {
+            const itemsEl = document.getElementById('cart-items');
+            const summaryEl = document.getElementById('cart-summary');
+            itemsEl.innerHTML = `<p class="text-gray-500 p-4">Loading cart...</p>`;
+            summaryEl.innerHTML = '';
+            
+            try {
+                const response = await fetch(`${API_BASE}/customer/cart?id=${CUSTOMER_ID}`);
+                if (!response.ok) throw new Error('Failed to fetch cart');
+                const cart = await response.json();
+
+                if (!cart.items || cart.items.length === 0) {
+                    itemsEl.innerHTML = `<p class="text-gray-500 p-4">Your cart is empty.</p>`;
+                } else {
+                    itemsEl.innerHTML = cart.items.map(item => `
+                        <div class="p-4 flex justify-between items-center">
+                            <div>
+                                <p class="text-base font-medium text-gray-900">${item.med_name}</p>
+                                <p class="text-sm text-gray-600">Qty: ${item.quantity} @ ₹${item.price} each</p>
+                                <p class="text-sm text-gray-500">From: ${item.assigned_pharmacy || 'N/A'}</p>
+                            </div>
+                            <p class="text-base font-medium text-gray-900">₹${item.item_total}</p>
+                        </div>
+                    `).join('');
+                }
+
+                const details = cart.details || {};
+                summaryEl.innerHTML = `
+                    ${details.requires_prescription ? `
+                        <div class="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-md text-sm">
+                            <strong>This order requires a prescription.</strong> Please upload it below.
+                        </div>
+                        <input type="file" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+                    ` : ''}
+                    <div class="flex justify-between items-center mt-6">
+                        <span class="text-lg font-semibold text-gray-900">Total:</span>
+                        <span class="text-2xl font-bold text-gray-900">₹${details.total_amount || 0}</span>
+                    </div>
+                    <button ${!cart.items || cart.items.length === 0 ? 'disabled' : ''}
+                        onclick="checkout()"
+                        class="mt-6 w-full p-3 rounded-md text-base font-medium 
+                               ${cart.items && cart.items.length > 0 ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}">
+                        Proceed to Checkout
+                    </button>
+                `;
+            } catch (error) {
+                console.error("Error loading cart:", error);
+                itemsEl.innerHTML = `<p class="text-red-500 p-4">Error loading cart.</p>`;
+            }
+        }
+
+        async function checkout() {
+            try {
+                const response = await fetch(`${API_BASE}/cart/process?id=${CUSTOMER_ID}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const data = await response.json();
+                if (!response.ok) throw data;
+                
+                showMessage(`Order created successfully!`, false);
+                loadCart(); // Refresh cart (should be empty now)
+            } catch (error) {
+                console.error("Error checking out:", error);
+                showMessage(error.error || 'Checkout failed.', true);
+            }
+        }
+        
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Update navigation links with customer ID
+            document.getElementById('nav-dashboard').href = `/dashboard?id=${CUSTOMER_ID}`;
+            document.getElementById('nav-orders').href = `/orders?id=${CUSTOMER_ID}`;
+            searchMedicines();
+        });
+    </script>
+</body>
+</html>
+

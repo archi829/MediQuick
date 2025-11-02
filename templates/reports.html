@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - MediQuick</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        pre { background: #1f2937; color: #f3f4f6; padding: 15px; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word; }
+        .section { background: #f9fafb; border: 1px solid #e5e7eb; padding: 20px; margin-bottom: 25px; border-radius: 8px; }
+        h2 { border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <h1 class="text-2xl font-bold text-gray-900">Database Reports</h1>
+                <a href="/" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">Back to Home</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <!-- Req 4f: Aggregate Query -->
+            <div class="section">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">(Req 4f) AGGREGATE Query</h2>
+                <p class="text-sm text-gray-600 mb-4">"Get total sales and order count for each pharmacy."</p>
+                <button onclick="runReport('aggregate_query')" class="bg-gray-700 text-white p-2 rounded-md hover:bg-gray-800 w-full">
+                    Run Aggregate Report
+                </button>
+            </div>
+            
+            <!-- Req 4d: Nested Query -->
+            <div class="section">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">(Req 4d) NESTED Query (Subquery)</h2>
+                <p class="text-sm text-gray-600 mb-4">"Find all medicines that have NOT been sold yet."</p>
+                <button onclick="runReport('nested_query')" class="bg-gray-700 text-white p-2 rounded-md hover:bg-gray-800 w-full">
+                    Run Nested Report
+                </button>
+            </div>
+
+            <!-- Results Area -->
+            <div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Query Results:</h3>
+                <pre id="results">{ "message": "Query results will appear here..." }</pre>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:5000/api';
+        const resultsEl = document.getElementById('results');
+
+        function showResult(data, error = false) {
+            resultsEl.textContent = JSON.stringify(data, null, 2);
+            if (error) {
+                resultsEl.classList.add('text-red-400');
+            } else {
+                resultsEl.classList.remove('text-red-400');
+            }
+        }
+
+        async function runReport(reportName) {
+            resultsEl.textContent = "Loading...";
+            try {
+                const response = await fetch(`${API_BASE}/reports/${reportName}`);
+                const data = await response.json();
+                if (!response.ok) throw data;
+                showResult(data);
+            } catch (error) {
+                console.error("API Error:", error);
+                showResult(error, true);
+            }
+        }
+    </script>
+</body>
+</html>

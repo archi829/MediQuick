@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Orders - MediQuick</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Get Customer ID from URL parameter -->
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const CUSTOMER_ID = urlParams.get('id') || 1; // Fallback to 1 for demo if no ID provided
+        const API_BASE = 'http://127.0.0.1:5000/api';
+    </script>
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <h1 class="text-2xl font-bold text-gray-900">My Orders</h1>
+                <nav class="flex space-x-4">
+                    <a id="nav-dashboard" href="/dashboard" class="font-medium text-gray-500 hover:text-gray-700">Search & Cart</a>
+                    <a id="nav-orders" href="/orders" class="font-medium text-indigo-600">My Orders</a>
+                    <a href="/" class="text-sm font-medium text-gray-500 hover:text-gray-700">Log Out</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">(Req 4e: JOIN Query) Your Order History</h2>
+            <div id="orders-list" class="space-y-6">
+                <!-- JS will populate this -->
+                <p class="text-gray-500">Loading order history...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const listEl = document.getElementById('orders-list');
+
+        async function loadOrders() {
+            try {
+                const response = await fetch(`${API_BASE}/customer/orders?id=${CUSTOMER_ID}`);
+                if (!response.ok) throw new Error('Failed to fetch orders');
+                const orders = await response.json();
+
+                if (!orders || orders.length === 0) {
+                    listEl.innerHTML = `<p class="text-gray-500">You have no orders.</p>`;
+                    return;
+                }
+
+                // Group orders by order_id since API returns flat list with sub-orders
+                const ordersMap = {};
+                orders.forEach(item => {
+                    if (!ordersMap[item.order_id]) {
+                        ordersMap[item.order_id] = {
+                            order_id: item.order_id,
+                            order_date: item.order_date,
+                            total_amount: item.total_amount,
+                            final_status: item.final_status,
+                            sub_orders: []
+                        };
+                    }
+                    ordersMap[item.order_id].sub_orders.push({
+                        sub_order_id: item.sub_order_id,
+                        status: item.sub_order_status,
+                        pharmacy_name: item.pharm_name
+                    });
+                });
+
+                const ordersList = Object.values(ordersMap);
+
+                listEl.innerHTML = ordersList.map(order => `
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="p-6 border-b border-gray-200">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Order #${order.order_id}</h3>
+                                    <p class="text-sm text-gray-500">Placed on: ${new Date(order.order_date).toLocaleString()}</p>
+                                </div>
+                                <div class="mt-4 sm:mt-0 text-left sm:text-right">
+                                    <p class="text-2xl font-bold text-gray-900">₹${order.total_amount}</p>
+                                    <span class="inline-block bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">${order.final_status}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6 bg-gray-50">
+                            <h4 class="text-base font-medium text-gray-700 mb-3">Shipments:</h4>
+                            <ul class="divide-y divide-gray-200">
+                                ${order.sub_orders.map(sub => `
+                                    <li class="py-3 flex justify-between items-center">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-800">Shipment #${sub.sub_order_id}</p>
+                                            <p class="text-sm text-gray-600">From: ${sub.pharmacy_name}</p>
+                                        </div>
+                                        <span class="text-sm font-medium text-gray-700">${sub.status}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error("Error loading orders:", error);
+                listEl.innerHTML = `<p class="text-red-500">Error loading order history.</p>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Update navigation links with customer ID
+            document.getElementById('nav-dashboard').href = `/dashboard?id=${CUSTOMER_ID}`;
+            document.getElementById('nav-orders').href = `/orders?id=${CUSTOMER_ID}`;
+            loadOrders();
+        });
+    </script>
+</body>
+</html>

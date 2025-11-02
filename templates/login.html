@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - MediQuick</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
+        <div>
+            <h2 class="text-3xl font-extrabold text-center text-gray-900">
+                Sign in to your account
+            </h2>
+            <p class="mt-2 text-center text-sm text-gray-600">
+                Or <a href="/" class="font-medium text-indigo-600 hover:text-indigo-500">return to home</a>
+            </p>
+        </div>
+        
+        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md" role="alert">
+            </svg>
+            <span class="ml-2 text-2xl font-bold text-indigo-600">MediQuick</span>
+        </div>
+        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Customer Login</h2>
+
+        <!-- Result Message -->
+        <div id="result-message" class="hidden p-3 rounded-md mb-4 text-center"></div>
+
+        <form id="login-form" onsubmit="login(event)">
+            <div class="space-y-4">
+                <input type="text" id="email" placeholder="Email (Username)" required class="p-3 border rounded-md w-full">
+                <input type="password" id="password" placeholder="Password" required class="p-3 border rounded-md w-full">
+                <!-- Hidden input to pass the role to the API -->
+                <input type="hidden" id="role" value="Customer">
+            </div>
+
+            <div>
+                <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded-md mt-6 hover:bg-indigo-700 transition">
+                    Login
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-6 text-center">
+            <p class="text-sm text-gray-600">
+                Don't have an account?
+                <a href="/register" class="font-medium text-indigo-600 hover:underline">Sign up</a>
+            </sP>
+        </div>
+    </div>
+
+    <script>
+        const messageEl = document.getElementById('result-message');
+        const role = document.getElementById('role').value;
+        const successUrl = '/dashboard'; // Customer login goes to /dashboard
+
+        function showMessage(message, isError) {
+            messageEl.textContent = message;
+            messageEl.classList.remove('hidden', 'bg-green-100', 'text-green-700', 'bg-red-100', 'text-red-700');
+            if (isError) {
+                messageEl.classList.add('bg-red-100', 'text-red-700');
+            } else {
+                messageEl.classList.add('bg-green-100', 'text-green-700');
+            }
+        }
+
+        async function login(event) {
+            event.preventDefault();
+            const payload = {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                role: role
+            };
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+
+                // Check if response is JSON before parsing
+                const contentType = response.headers.get('content-type');
+                let data;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    throw new Error(`Server returned non-JSON response. Status: ${response.status}`);
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Login failed.');
+                }
+
+                if (!data.linked_id) {
+                    throw new Error('Invalid login response: missing customer ID');
+                }
+
+                showMessage('Login successful! Redirecting...', false);
+                // Pass the cust_id (linked_id) to the dashboard
+                window.location.href = `${successUrl}?id=${data.linked_id}`;
+
+            } catch (error) {
+                console.error('Login error:', error);
+                showMessage(error.message || 'Login failed. Please try again.', true);
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Dashboard - MediQuick</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Get Agent ID from URL parameter -->
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const AGENT_ID = urlParams.get('id') || 1; // Fallback to 1 for demo if no ID provided
+        const API_BASE = 'http://127.0.0.1:5000/api';
+    </script>
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+            <h1 class="text-2xl font-bold text-gray-900">Delivery Agent Dashboard</h1>
+            <a href="/" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">Log Out</a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Your Assigned Deliveries</h2>
+            <!-- Result Message -->
+            <div id="result-message" class="mb-4 p-4 rounded-md hidden"></div>
+            
+            <div id="deliveries-list" class="space-y-6">
+                <!-- JS will populate this -->
+                <p class="text-gray-500">Loading assigned deliveries...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const listEl = document.getElementById('deliveries-list');
+        const messageEl = document.getElementById('result-message');
+
+        function showMessage(message, isError) {
+            messageEl.textContent = message;
+            messageEl.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+            if (isError) {
+                messageEl.classList.add('bg-red-100', 'text-red-800');
+            } else {
+                messageEl.classList.add('bg-green-100', 'text-green-800');
+            }
+            messageEl.classList.remove('hidden');
+            setTimeout(() => messageEl.classList.add('hidden'), 3000);
+        }
+
+        async function loadDeliveries() {
+            try {
+                const response = await fetch(`${API_BASE}/agent/deliveries?id=${AGENT_ID}`);
+                if (!response.ok) throw new Error('Failed to fetch deliveries');
+                const deliveries = await response.json();
+
+                if (deliveries.length === 0) {
+                    listEl.innerHTML = `<p class="text-gray-500">No active deliveries assigned.</p>`;
+                    return;
+                }
+
+                listEl.innerHTML = deliveries.map(d => `
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="p-6">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-indigo-600 truncate">Order #${d.order_id}-${d.sub_order_id}</p>
+                                    <p class="mt-2 text-base font-semibold text-gray-800">Status: ${d.status}</p>
+                                </div>
+                                <div class="mt-4 sm:mt-0 sm:ml-4 flex-shrink-0 flex items-center space-x-2">
+                                    <button onclick="updateDeliveryStatus(${d.order_id}, ${d.sub_order_id}, 'Shipped')" class="px-3 py-1 text-sm font-medium rounded-full text-white bg-blue-600 hover:bg-blue-700">
+                                        Picked Up
+                                    </button>
+                                    <button onclick="updateDeliveryStatus(${d.order_id}, ${d.sub_order_id}, 'Delivered')" class="px-3 py-1 text-sm font-medium rounded-full text-white bg-green-600 hover:bg-green-700">
+                                        Delivered
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-6 border-t border-gray-200 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h4 class="text-base font-medium text-gray-700">Pickup From:</h4>
+                                    <p class="text-sm font-semibold text-gray-900">${d.pharm_name}</p>
+                                    <p class="text-sm text-gray-600">${d.pickup_address || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <h4 class="text-base font-medium text-gray-700">Deliver To:</h4>
+                                    <p class="text-sm font-semibold text-gray-900">${d.first_name || 'Customer'}</p>
+                                    <p class="text-sm text-gray-600">${d.dropoff_address || 'N/A'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error("Error loading deliveries:", error);
+                listEl.innerHTML = `<p class="text-red-500">Error loading deliveries.</p>`;
+            }
+        }
+        
+        async function updateDeliveryStatus(orderId, subOrderId, newStatus) {
+            try {
+                const response = await fetch(`${API_BASE}/agent/deliveries/status?id=${AGENT_ID}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        order_id: orderId,
+                        sub_order_id: subOrderId,
+                        status: newStatus
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) throw data;
+                showMessage(data.message, false);
+                loadDeliveries(); // Refresh list
+            } catch (error) {
+                console.error("Error updating status:", error);
+                showMessage(error.error || 'Failed to update status.', true);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadDeliveries);
+    </script>
+</body>
+</html>
+
