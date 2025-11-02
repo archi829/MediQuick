@@ -5,6 +5,7 @@ import mysql.connector
 from mysql.connector import errorcode
 import random # For dummy coordinates
 from datetime import date, datetime
+from decimal import Decimal
 
 app = Flask(__name__)
 swagger = Swagger(app)
@@ -78,10 +79,17 @@ def create_mysql_user_with_role(username, password, role_type, cursor):
         return False
 
 # --- Helper Function to serialize complex types (like dates) ---
+# --- Helper Function to serialize complex types (like dates) ---
 def json_serializer(obj):
     """Custom JSON serializer for objects not serializable by default json code"""
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
+    
+    # --- ADD THIS IF BLOCK ---
+    if isinstance(obj, Decimal):
+        return float(obj)
+    # --- END OF ADDED BLOCK ---
+    
     raise TypeError ("Type %s not serializable" % type(obj))
 
 def run_query(query, params=None, fetch_one=False, dictionary=True):
@@ -611,12 +619,30 @@ def handle_medicines():
         return jsonify(results)
 
     else:
-        # --- READ Operation (with search) ---
+    # --- READ Operation (with search) ---
         search_query = request.args.get('q', '')
-        query = "SELECT med_id, med_name, type, description, prescription_required FROM Medicine WHERE med_name LIKE %s"
+
+    # This new query JOINS with Available_Stock to get stock and price
+        query = """
+            SELECT
+                m.med_id,
+                m.med_name,
+                m.type,
+                m.description,
+                m.prescription_required,
+                COALESCE(SUM(av.current_stock), 0) AS total_stock,
+                COALESCE(MIN(av.price), 0) AS min_price
+            FROM Medicine m
+            LEFT JOIN Available_Stock av ON m.med_id = av.med_id
+            WHERE m.med_name LIKE %s
+            GROUP BY m.med_id, m.med_name, m.type, m.description, m.prescription_required
+        """
+
         meds, err = run_query(query, (f"%{search_query}%",))
+
         if err:
             return jsonify({"error": str(err)}), 500
+
         return jsonify(meds)
 
 # --- CUSTOMER DASHBOARD APIS ---
@@ -734,8 +760,8 @@ def get_customer_orders():
             so.status AS sub_order_status,
             p.pharm_name
         FROM Orders o
-        JOIN Sub_Order so ON o.order_id = so.order_id
-        JOIN Pharmacy p ON so.pharmacy_id = p.pharmacy_id
+        LEFT JOIN Sub_Order so ON o.order_id = so.order_id
+        LEFT JOIN Pharmacy p ON so.pharmacy_id = p.pharmacy_id
         WHERE o.cust_id = %s
         ORDER BY o.order_date DESC, so.sub_order_id ASC;
     """
@@ -997,6 +1023,68 @@ def update_delivery_status():
         return jsonify({"error": str(err)}), 500
     return jsonify({"message": f"Delivery status updated to {new_status}"})
 
+# --- ADMIN: ASSIGN AGENT ---
+@app.route('/api/admin/unassigned_orders', methods=['GET'])
+def get_unassigned_orders():
+    """
+    Fetches all sub-orders that are 'Processing' and need an agent.
+    """
+    query = """
+        SELECT 
+            so.order_id, 
+            so.sub_order_id, 
+            p.pharm_name, 
+            c.first_name,
+            c.last_name,
+            so.sub_total
+        FROM Sub_Order so
+        JOIN Pharmacy p ON so.pharmacy_id = p.pharmacy_id
+        JOIN Orders o ON so.order_id = o.order_id
+        JOIN Customer c ON o.cust_id = c.cust_id
+        WHERE so.status = 'Processing'
+        ORDER BY so.order_id, so.sub_order_id;
+    """
+    orders, err = run_query(query)
+    if err:
+        return jsonify({"error": str(err)}), 500
+    return jsonify(orders)
+
+@app.route('/api/admin/assign_agent', methods=['POST'])
+def assign_agent_to_order():
+    """
+    Calls the stored procedure to assign an agent to a sub-order.
+    """
+    data = request.json
+    order_id = data.get('order_id')
+    sub_order_id = data.get('sub_order_id')
+
+    if not all([order_id, sub_order_id]):
+        return jsonify({"error": "order_id and sub_order_id are required"}), 400
+
+    conn = get_db_connection()
+    if not conn: 
+        return jsonify({"error": "DB connection failed"}), 500
+    cursor = conn.cursor(dictionary=True)
+    try:
+        # Call the new, safe procedure
+        cursor.callproc('sp_admin_assign_agent', (order_id, sub_order_id))
+        conn.commit()
+        
+        result = {}
+        for res in cursor.stored_results():
+            result = res.fetchone()
+            
+        return jsonify({"message": result.get('message', 'Success')}), 200
+    
+    except mysql.connector.Error as err:
+        conn.rollback()
+        # Handle "No available agents" error from the procedure
+        if err.errno == 1644: # SQLSTATE '45000'
+            return jsonify({"error": err.msg}), 400
+        return jsonify({"error": str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 # --- MAIN RUN ---
 if __name__ == '__main__':

@@ -184,6 +184,8 @@
                 }
 
                 const details = cart.details || {};
+                const hasItems = cart.items && cart.items.length > 0;
+                
                 summaryEl.innerHTML = `
                     ${details.requires_prescription ? `
                         <div class="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-md text-sm">
@@ -195,10 +197,19 @@
                         <span class="text-lg font-semibold text-gray-900">Total:</span>
                         <span class="text-2xl font-bold text-gray-900">₹${details.total_amount || 0}</span>
                     </div>
-                    <button ${!cart.items || cart.items.length === 0 ? 'disabled' : ''}
-                        onclick="checkout()"
+
+                    <button id="pay-btn"
+                        ${!hasItems ? 'disabled' : ''}
+                        onclick="handlePayment()"
                         class="mt-6 w-full p-3 rounded-md text-base font-medium 
-                               ${cart.items && cart.items.length > 0 ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}">
+                               ${hasItems ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}">
+                        Pay ₹${details.total_amount || 0}
+                    </button>
+                    
+                    <button id="checkout-btn"
+                        disabled  onclick="checkout()"
+                        class="mt-2 w-full p-3 rounded-md text-base font-medium 
+                               bg-gray-300 text-gray-500 cursor-not-allowed">
                         Proceed to Checkout
                     </button>
                 `;
@@ -225,6 +236,21 @@
             }
         }
         
+        async function handlePayment() {
+            // This is a dummy function, as requested.
+            // It just enables the checkout button.
+            const payBtn = document.getElementById('pay-btn');
+            const checkoutBtn = document.getElementById('checkout-btn');
+            
+            payBtn.disabled = true;
+            payBtn.textContent = 'Payment Confirmed!';
+            
+            checkoutBtn.disabled = false;
+            checkoutBtn.classList.remove('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+            checkoutBtn.classList.add('bg-green-600', 'text-white', 'hover:bg-green-700');
+            
+            showMessage('Payment successful. You may now proceed to checkout.', false);
+        } 
         // Initial load
         document.addEventListener('DOMContentLoaded', () => {
             // Update navigation links with customer ID

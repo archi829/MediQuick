@@ -110,7 +110,19 @@
                 <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-green-700">Add Medicine to Database</button>
             </form>
         </div>
-
+      
+        <div class="bg-white p-6 rounded-lg shadow-md mt-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Assign Delivery Agents</h2>
+            <p class="text-sm text-gray-600 mb-4">
+                Show all orders that are "Processing" and need a delivery agent.
+            </p>
+            <button id="load-orders-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-blue-700">
+                Load Unassigned Orders
+            </button>
+        
+            <ul id="orders-list" class="mt-6 space-y-4">
+                </ul>
+        </div>
     </main>
 
     <script>
@@ -235,6 +247,74 @@
                 showResult(`Error: ${error.message}`, true);
             }
         });
+        
+        // --- Assign Agent Logic ---
+const loadBtn = document.getElementById('load-orders-btn');
+const ordersList = document.getElementById('orders-list');
+
+async function loadUnassignedOrders() {
+    ordersList.innerHTML = '<p class="text-gray-500">Loading...</p>';
+    try {
+        const response = await fetch(`${API_BASE}/admin/unassigned_orders`);
+        const orders = await response.json();
+
+        if (!response.ok) throw new Error(orders.error || 'Failed to fetch');
+
+        if (orders.length === 0) {
+            ordersList.innerHTML = '<p class="text-gray-500">No unassigned orders found.</p>';
+            return;
+        }
+
+        ordersList.innerHTML = orders.map(order => `
+            <li class="p-4 border rounded-md flex justify-between items-center">
+                <div>
+                    <p class="font-bold">Order #${order.order_id}-${order.sub_order_id}</p>
+                    <p class="text-sm">Customer: ${order.first_name} ${order.last_name}</p>
+                    <p class="text-sm text-gray-600">From: ${order.pharm_name}</p>
+                </div>
+                <button 
+                    onclick="assignAgent(${order.order_id}, ${order.sub_order_id}, this)"
+                    class="bg-green-600 text-white py-1 px-3 rounded-md hover:bg-green-700 text-sm">
+                    Assign Agent
+                </button>
+            </li>
+        `).join('');
+
+    } catch (error) {
+        ordersList.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+    }
+}
+
+async function assignAgent(orderId, subOrderId, buttonElement) {
+    buttonElement.disabled = true;
+    buttonElement.textContent = 'Assigning...';
+
+    try {
+        const response = await fetch(`${API_BASE}/admin/assign_agent`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                order_id: orderId,
+                sub_order_id: subOrderId
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to assign');
+
+        showResult(`Success: ${data.message}`, false);
+        // Remove the item from the list
+        buttonElement.closest('li').remove();
+
+    } catch (error) {
+        showResult(`Error: ${error.message}`, true);
+        buttonElement.disabled = false;
+        buttonElement.textContent = 'Assign Agent';
+    }
+}
+
+loadBtn.addEventListener('click', loadUnassignedOrders);
+        
 
     </script>
 </body>
