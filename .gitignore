@@ -1,0 +1,15 @@
+# Python virtual environment
+venv/
+*.pyc
+__pycache__/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE settings
+.vscode/
+.idea/
+
+# Local secrets (if you create one)
+#.env

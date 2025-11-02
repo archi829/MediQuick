@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MediQuick</title>
+</head>
+<body>
+    <h1>Welcome to MediQuick!</h1>
+    
+    <h2>Available Medicines:</h2>
+    <ul>
+        {% for med in medicines %}
+            <li>{{ med.med_name }} - Requires Prescription: {{ med.prescription_required }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
