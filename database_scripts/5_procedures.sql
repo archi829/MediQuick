@@ -251,3 +251,25 @@ BEGIN
 END$$
 DELIMITER ;
 
+-- ========================
+--   P6) Doctor verifies prescription 
+-- ========================
+DELIMITER $$
+CREATE PROCEDURE sp_verify_prescription(
+    IN p_presc_id INT,
+    IN p_doc_id INT,
+    IN p_new_status ENUM('Verified', 'Rejected')
+)
+BEGIN
+    UPDATE Prescription
+    SET
+        status = p_new_status,
+        assigned_doc_id = p_doc_id, -- Assign the doctor who verified it [cite: 34]
+        verified_at = CURRENT_TIMESTAMP
+    WHERE
+        presc_id = p_presc_id
+        AND status = 'To Be Verified'; -- Only update unverified ones [cite: 37]
+    
+    SELECT ROW_COUNT() AS rows_updated;
+END$$
+DELIMITER ;

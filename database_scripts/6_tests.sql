@@ -235,3 +235,57 @@ SET SQL_SAFE_UPDATES = 1;
 -- Step 3: Verify agent is 'Busy' and sub-order is 'Assigned'
 SELECT * FROM Delivery_Agent WHERE agent_id = @agent_id;
 SELECT * FROM Sub_Order WHERE sub_order_id = @sub_order_id;
+
+-- =====================================================================
+-- Test 9: sp_verify_prescription (Doctor Functionality)
+-- =====================================================================
+-- This test relies on Test 5 having created an order for cust_id = 1.
+-- We will manually insert a prescription for that order to test the
+-- doctor's verification procedure.
+
+-- Step 1: Setup - Insert a prescription to be verified.
+-- (We assume Test 5 ran, creating an order for cust_id = 1)
+SET @order_id_for_presc = (SELECT order_id FROM Orders WHERE cust_id = 1 LIMIT 1);
+SET @cust_id_for_presc = 1;
+
+INSERT INTO Prescription (order_id, cust_id, file_path, status)
+VALUES (@order_id_for_presc, @cust_id_for_presc, '/uploads/presc_1.pdf', 'To Be Verified');
+
+SET @test_presc_id = LAST_INSERT_ID();
+
+-- Verify initial state
+SELECT * FROM Prescription WHERE presc_id = @test_presc_id;
+-- EXPECTED: status = 'To Be Verified', assigned_doc_id = NULL
+
+-- Step 2: Test successful verification
+-- We use doc_id = 1 (Dr. Suresh Iyer from data population)
+CALL sp_verify_prescription(@test_presc_id, 1, 'Verified');
+
+-- Verify update
+SELECT * FROM Prescription WHERE presc_id = @test_presc_id;
+-- EXPECTED: status = 'Verified', assigned_doc_id = 1, verified_at is NOT NULL
+
+-- Step 3: Test that a re-verification fails (procedure only updates 'To Be Verified')
+-- Attempt to change status from 'Verified' to 'Rejected'
+CALL sp_verify_prescription(@test_presc_id, 2, 'Rejected');
+
+-- Verify no change
+SELECT * FROM Prescription WHERE presc_id = @test_presc_id;
+-- EXPECTED: status = 'Verified', assigned_doc_id = 1 (no change)
+
+
+-- Step 4: Test successful rejection
+-- Setup
+INSERT INTO Prescription (order_id, cust_id, file_path, status)
+VALUES (@order_id_for_presc, @cust_id_for_presc, '/uploads/presc_2.pdf', 'To Be Verified');
+
+SET @test_presc_id_2 = LAST_INSERT_ID();
+
+-- Call procedure with 'Rejected'
+CALL sp_verify_prescription(@test_presc_id_2, 2, 'Rejected');
+
+-- Verify update
+SELECT * FROM Prescription WHERE presc_id = @test_presc_id_2;
+-- EXPECTED: status = 'Rejected', assigned_doc_id = 2, verified_at is NOT NULL
+
+-- =====================================================================
