@@ -292,3 +292,90 @@ BEGIN
     -- This procedure assumes the cart exists.
 END$$
 DELIMITER ;
+
+
+
+
+-- =========================
+--   P8) Admin Assign Agent (Admin View Wrapper)
+--       This procedure handles the (order_id, sub_order_id) compound key
+--       and calls the core assignment logic.
+-- =======================
+DELIMITER $$
+CREATE PROCEDURE sp_admin_assign_agent(
+    IN p_order_id INT,
+    IN p_sub_order_id INT
+)
+BEGIN
+    -- This procedure acts as a wrapper for the existing logic, 
+    -- primarily to facilitate front-end/API calls using the composite key.
+    
+    -- Check if the sub-order exists and is in the 'Processing' status
+    DECLARE v_current_status ENUM('Processing','Assigned','Shipped','Delivered','Cancelled');
+    
+    SELECT status INTO v_current_status
+    FROM Sub_Order
+    WHERE order_id = p_order_id AND sub_order_id = p_sub_order_id;
+    
+    IF v_current_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Sub-Order not found.';
+    END IF;
+    
+--    IF v_current_status != 'Processing' THEN
+--        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = CONCAT('Cannot assign agent. Sub-Order is already in status: ', v_current_status);
+--    END IF;
+    
+    -- Call the core assignment logic which finds an available agent
+    -- NOTE: Your existing core procedure is sp_assign_delivery_agent(IN p_sub_order_id INT)
+    -- We pass the sub_order_id. We need to ensure the existing procedure logic works for the sub_order_id in isolation.
+    
+    -- *** This is the critical step ***
+    CALL sp_assign_delivery_agent(p_sub_order_id);
+    
+    -- Check if the assignment was successful by looking up the new status
+    SELECT status INTO v_current_status
+    FROM Sub_Order
+    WHERE order_id = p_order_id AND sub_order_id = p_sub_order_id;
+    
+    IF v_current_status = 'Assigned' THEN
+        SELECT CONCAT('Successfully assigned agent to Sub-Order #', p_sub_order_id) AS message;
+    ELSE
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No available delivery agents or order not ready for assignment.';
+    END IF;
+
+END$$
+DELIMITER ;
+
+
+
+
+
+
+
+
+-- DUMMY CODE: Must be added to 6_procedures.sql for system function
+DELIMITER $$
+CREATE PROCEDURE sp_complete_delivery(IN p_order_id INT, IN p_sub_order_id INT)
+BEGIN
+    DECLARE v_agent_id INT;
+
+    -- 1. Get the agent assigned to the sub-order
+    SELECT agent_id INTO v_agent_id
+    FROM Sub_Order
+    WHERE order_id = p_order_id AND sub_order_id = p_sub_order_id;
+
+    -- 2. Mark the Sub-Order as Delivered
+    UPDATE Sub_Order
+    SET status = 'Delivered'
+    WHERE order_id = p_order_id AND sub_order_id = p_sub_order_id;
+
+    -- 3. Update the agent's status from 'Busy' to 'Available'
+    IF v_agent_id IS NOT NULL THEN
+        UPDATE Delivery_Agent
+        SET status = 'Available'
+        WHERE agent_id = v_agent_id;
+    END IF;
+    
+    -- (A trigger would typically update the parent Orders table status here)
+END$$
+DELIMITER ;

@@ -73,8 +73,7 @@ BEGIN
     RETURN paid_status;
 END$$
 DELIMITER ;
-
-DELIMITER $$
+/*DELIMITER $$
 CREATE FUNCTION fn_create_sub_orders(p_cart_id INT, p_order_id INT) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     INSERT INTO Sub_Order(order_id, sub_order_id, pharmacy_id, sub_total, status)
@@ -87,6 +86,31 @@ BEGIN
     FROM Cart_Item
     WHERE cart_id = p_cart_id
     GROUP BY assigned_pharmacy_id;
+
+    RETURN TRUE;
+END$$
+DELIMITER ;
+*/
+DELIMITER $$
+CREATE FUNCTION fn_create_sub_orders(p_cart_id INT, p_order_id INT)
+RETURNS BOOLEAN
+DETERMINISTIC
+BEGIN
+    INSERT INTO Sub_Order(order_id, sub_order_id, pharmacy_id, sub_total, status)
+    SELECT
+        p_order_id,
+        ROW_NUMBER() OVER (ORDER BY COALESCE(ci.assigned_pharmacy_id, s.pharmacy_id)) AS sub_order_id,
+        COALESCE(ci.assigned_pharmacy_id, s.pharmacy_id),
+        0,
+        'Processing'
+    FROM Cart_Item ci
+    LEFT JOIN (
+        SELECT med_id, MIN(pharmacy_id) AS pharmacy_id
+        FROM Available_Stock
+        GROUP BY med_id
+    ) s ON ci.med_id = s.med_id
+    WHERE ci.cart_id = p_cart_id
+    GROUP BY COALESCE(ci.assigned_pharmacy_id, s.pharmacy_id);
 
     RETURN TRUE;
 END$$
