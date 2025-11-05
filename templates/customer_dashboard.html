@@ -236,7 +236,7 @@
             }
         }
         
-        async function handlePayment() {
+      /*  async function handlePayment() {
             // This is a dummy function, as requested.
             // It just enables the checkout button.
             const payBtn = document.getElementById('pay-btn');
@@ -251,6 +251,42 @@
             
             showMessage('Payment successful. You may now proceed to checkout.', false);
         } 
+            */
+
+        async function handlePayment() {
+            const payBtn = document.getElementById('pay-btn');
+            const checkoutBtn = document.getElementById('checkout-btn');
+            
+            payBtn.disabled = true;
+            payBtn.textContent = 'Processing Payment...';
+            
+            try {
+                // STEP 1: Call the backend API to update payment status in the database
+                // We pass the CUSTOMER_ID, and the backend finds the corresponding Cart_ID
+                const response = await fetch(`${API_BASE}/cart/${CUSTOMER_ID}/pay_db_update`, { 
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+        
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Payment API call failed.');
+        
+                // STEP 2: If the database update was successful, enable the checkout button
+                payBtn.textContent = 'Payment Confirmed!';
+                checkoutBtn.disabled = false;
+                checkoutBtn.classList.remove('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+                checkoutBtn.classList.add('bg-green-600', 'text-white', 'hover:bg-green-700');
+                
+                showMessage('Payment successful. Cart status updated in DB. You may now proceed to checkout.', false);
+            
+            } catch (error) {
+                // If API fails, re-enable the button and show error
+                payBtn.disabled = false;
+                payBtn.textContent = 'Pay';
+                showMessage(error.message || 'Payment failed due to a backend error.', true);
+            }
+         }
+         
         // Initial load
         document.addEventListener('DOMContentLoaded', () => {
             // Update navigation links with customer ID

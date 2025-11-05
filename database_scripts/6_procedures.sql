@@ -273,3 +273,22 @@ BEGIN
     SELECT ROW_COUNT() AS rows_updated;
 END$$
 DELIMITER ;
+
+
+
+-- =========================
+-- P7) Update Payment Status
+--     Called after front-end "Pay" button is clicked.
+-- =========================
+DELIMITER $$
+CREATE PROCEDURE sp_update_payment_status(IN p_cust_id INT)
+BEGIN
+    -- Find the active cart for the customer and set status to Paid
+    UPDATE Cart
+    SET payment_status = 'Paid'
+    WHERE cust_id = p_cust_id; 
+    
+    -- NOTE: The calling API must handle the success/error reporting.
+    -- This procedure assumes the cart exists.
+END$$
+DELIMITER ;

@@ -743,6 +743,31 @@ def process_cart_order():
         cursor.close()
         conn.close()
 
+# --- (Req 4f) PAY CART: Update Payment Status ---
+@app.route('/api/cart/<int:cust_id>/pay_db_update', methods=['POST'])
+def pay_cart(cust_id):
+    """
+    Calls stored procedure `sp_update_payment_status` to mark payment as done,
+    update cart and order tables accordingly.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "DB connection failed"}), 500
+    
+    cursor = conn.cursor(dictionary=True)
+    try:
+        # Call your stored procedure
+        cursor.callproc('sp_update_payment_status', [cust_id])
+        conn.commit()
+        return jsonify({"message": "Payment status updated successfully"}), 200
+    except mysql.connector.Error as err:
+        conn.rollback()
+        return jsonify({"error": str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @app.route('/api/customer/orders', methods=['GET'])
 def get_customer_orders():
     # --- (Req 4e) JOIN QUERY Example ---
