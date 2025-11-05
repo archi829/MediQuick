@@ -202,6 +202,9 @@ BEGIN
 
     SET new_order_id = LAST_INSERT_ID();
 
+    -- (NEW STEP) Handle Prescription Creation
+    SELECT fn_create_initial_prescription_record(v_cust_id, new_order_id);
+
     -- Step 6: Create sub-orders
     SELECT fn_create_sub_orders(p_cart_id, new_order_id);
 
@@ -346,36 +349,55 @@ BEGIN
 END$$
 DELIMITER ;
 
-
-
-
-
-
-
-
--- DUMMY CODE: Must be added to 6_procedures.sql for system function
+-- =========================
+-- P8) Check and update Delivery Agent Status
+--     Called after a delivery sub-order is marked 'Delivered'
+-- =========================
 DELIMITER $$
-CREATE PROCEDURE sp_complete_delivery(IN p_order_id INT, IN p_sub_order_id INT)
+CREATE PROCEDURE sp_check_and_update_agent_status(IN p_agent_id INT)
 BEGIN
-    DECLARE v_agent_id INT;
-
-    -- 1. Get the agent assigned to the sub-order
-    SELECT agent_id INTO v_agent_id
+    DECLARE v_active_deliveries INT;
+    
+    -- Count all sub-orders assigned to this agent that are NOT yet Delivered or Cancelled.
+    -- We assume 'Processing', 'Assigned', and 'Shipped' are active statuses.
+    SELECT COUNT(*) INTO v_active_deliveries
     FROM Sub_Order
-    WHERE order_id = p_order_id AND sub_order_id = p_sub_order_id;
+    WHERE agent_id = p_agent_id 
+      AND status IN ('Processing', 'Assigned', 'Shipped'); 
 
-    -- 2. Mark the Sub-Order as Delivered
-    UPDATE Sub_Order
-    SET status = 'Delivered'
-    WHERE order_id = p_order_id AND sub_order_id = p_sub_order_id;
-
-    -- 3. Update the agent's status from 'Busy' to 'Available'
-    IF v_agent_id IS NOT NULL THEN
+    -- If no more active deliveries, set agent status to 'Available'
+    IF v_active_deliveries = 0 THEN
         UPDATE Delivery_Agent
         SET status = 'Available'
-        WHERE agent_id = v_agent_id;
+        WHERE agent_id = p_agent_id
+        AND status != 'Offline'; -- Do not change status if agent manually set to Offline
     END IF;
-    
-    -- (A trigger would typically update the parent Orders table status here)
 END$$
 DELIMITER ;
+
+-- -- DUMMY CODE: Must be added to 6_procedures.sql for system function
+-- DELIMITER $$
+-- CREATE PROCEDURE sp_complete_delivery(IN p_order_id INT, IN p_sub_order_id INT)
+-- BEGIN
+--     DECLARE v_agent_id INT;
+
+--     -- 1. Get the agent assigned to the sub-order
+--     SELECT agent_id INTO v_agent_id
+--     FROM Sub_Order
+--     WHERE order_id = p_order_id AND sub_order_id = p_sub_order_id;
+
+--     -- 2. Mark the Sub-Order as Delivered
+--     UPDATE Sub_Order
+--     SET status = 'Delivered'
+--     WHERE order_id = p_order_id AND sub_order_id = p_sub_order_id;
+
+--     -- 3. Update the agent's status from 'Busy' to 'Available'
+--     IF v_agent_id IS NOT NULL THEN
+--         UPDATE Delivery_Agent
+--         SET status = 'Available'
+--         WHERE agent_id = v_agent_id;
+--     END IF;
+    
+--     -- (A trigger would typically update the parent Orders table status here)
+-- END$$
+-- DELIMITER ;

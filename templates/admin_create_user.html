@@ -101,6 +101,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="text" id="medName" placeholder="Medicine Name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
                     <input type="text" id="medType" placeholder="Type (e.g., Tablet)" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="number" id="pharmId" placeholder="Initial Pharmacy ID (e.g., 1)" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
                 </div>
                 <textarea id="medDesc" placeholder="Description" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"></textarea>
                 <div class="flex items-center">
@@ -229,7 +230,8 @@
                 med_name: document.getElementById('medName').value,
                 type: document.getElementById('medType').value,
                 description: document.getElementById('medDesc').value,
-                prescription_required: document.getElementById('medPresc').checked
+                prescription_required: document.getElementById('medPresc').checked,
+                pharmacy_id: document.getElementById('pharmId').value
             };
             
             try {
@@ -238,16 +240,27 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
                 });
-                const data = await response.json();
+                
+                // Robust check for JSON content
+                const contentType = response.headers.get('content-type');
+                let data = {};
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    throw new Error(`Server returned non-JSON response. Status: ${response.status}. Content: ${text.substring(0, 100)}...`);
+                }
+
                 if (!response.ok) throw new Error(data.error || 'Failed to create medicine');
                 
-                showResult(`Success: Created Medicine (${payload.med_name}) with ID: ${data.id}`);
+                // CORRECTED: Use data.med_id instead of data.id
+                showResult(`Success: Created Medicine (${payload.med_name}) with ID: ${data.med_id}`);
                 e.target.reset();
             } catch (error) {
+                console.error("Medicine Creation Error:", error);
                 showResult(`Error: ${error.message}`, true);
             }
         });
-        
         // --- Assign Agent Logic ---
 const loadBtn = document.getElementById('load-orders-btn');
 const ordersList = document.getElementById('orders-list');

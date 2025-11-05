@@ -1,6 +1,5 @@
 import json
 from flask import Flask, jsonify, render_template, request, abort
-from flasgger import Swagger
 import mysql.connector
 from mysql.connector import errorcode
 import random # For dummy coordinates
@@ -8,7 +7,6 @@ from datetime import date, datetime
 from decimal import Decimal
 
 app = Flask(__name__)
-swagger = Swagger(app)
 
 # --- DATABASE CONNECTION ---
 db_config = {
@@ -571,24 +569,71 @@ def create_agent():
 
 
 # --- (Req 4c) CRUD: MEDICINES ---
+# --- (Req 4c) CRUD: MEDICINES ---
 @app.route('/api/medicines', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def handle_medicines():
     
     if request.method == 'POST':
-        # --- CREATE Operation ---
+        # --- CREATE Operation (Two-step transaction: Medicine -> Available_Stock) ---
         data = request.json
-        query = """
-            INSERT INTO Medicine (med_name, type, description, unit, unit_size, prescription_required)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """
-        params = (
-            data.get('med_name'), data.get('type'), data.get('description'),
-            data.get('unit'), data.get('unit_size'), bool(data.get('prescription_required'))
-        )
-        results, err = run_query(query, params)
-        if err:
-            return jsonify({"error": str(err)}), 400
-        return jsonify(results), 201
+        pharmacy_id = data.get('pharmacy_id')
+        
+        if not pharmacy_id:
+             return jsonify({"error": "Pharmacy ID is required for initial stock assignment"}), 400
+
+        conn = get_db_connection()
+        if not conn: return jsonify({"error": "DB connection failed"}), 500
+        cursor = conn.cursor(dictionary=True)
+        
+        try:
+            # Step 1: Create the Medicine
+            medicine_query = """
+                INSERT INTO Medicine (med_name, type, description, unit, unit_size, prescription_required)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(medicine_query, (
+                data.get('med_name'), data.get('type'), data.get('description'),
+                data.get('unit', 'unit'), data.get('unit_size', 'N/A'), 
+                bool(data.get('prescription_required'))
+            ))
+            new_med_id = cursor.lastrowid
+            
+            if not new_med_id:
+                raise Exception("Failed to insert Medicine record.")
+
+            # Step 2: Insert into Available_Stock for the specified Pharmacy
+            # Sets initial stock and price to 0. This makes it visible for the pharmacy to manage.
+            stock_query = """
+                INSERT INTO Available_Stock (pharmacy_id, med_id, current_stock, price)
+                VALUES (%s, %s, 0, 0.00) 
+                ON DUPLICATE KEY UPDATE 
+                    current_stock = current_stock, 
+                    price = price
+            """
+            cursor.execute(stock_query, (
+                pharmacy_id, 
+                new_med_id
+            ))
+            
+            conn.commit()
+            
+            return jsonify({
+                "message": "Medicine created and assigned to pharmacy stock successfully",
+                "med_id": new_med_id,
+                "pharmacy_id": pharmacy_id
+            }), 201
+
+        except mysql.connector.Error as err:
+            conn.rollback()
+            if err.errno == 1062: # Duplicate entry
+                return jsonify({"error": "Medicine name already exists or invalid Pharmacy ID."}), 409
+            return jsonify({"error": str(err)}), 500
+        except Exception as e:
+            conn.rollback()
+            return jsonify({"error": str(e)}), 500
+        finally:
+            cursor.close()
+            conn.close()
 
     elif request.method == 'PUT':
         # --- UPDATE Operation ---
@@ -644,7 +689,6 @@ def handle_medicines():
             return jsonify({"error": str(err)}), 500
 
         return jsonify(meds)
-
 # --- CUSTOMER DASHBOARD APIS ---
 
 @app.route('/api/customer/cart', methods=['GET', 'POST'])
@@ -988,7 +1032,7 @@ def get_agent_deliveries():
         JOIN Pharmacy p ON so.pharmacy_id = p.pharmacy_id
         JOIN Orders o ON so.order_id = o.order_id
         JOIN Customer c ON o.cust_id = c.cust_id
-        WHERE so.agent_id = %s AND so.status = 'Assigned'
+        WHERE so.agent_id = %s AND so.status in ('Assigned', 'Shipped')
     """
     deliveries, err = run_query(query, (agent_id,))
     if err: return jsonify({"error": str(err)}), 500
@@ -1038,6 +1082,7 @@ def update_delivery_status():
     if not sub_order or str(sub_order['agent_id']) != str(agent_id):
         return jsonify({"error": "This delivery does not belong to you"}), 403
     
+    # 1. Update Sub_Order status
     query = """
         UPDATE Sub_Order 
         SET status = %s 
@@ -1046,8 +1091,25 @@ def update_delivery_status():
     results, err = run_query(query, (new_status, order_id, sub_order_id))
     if err:
         return jsonify({"error": str(err)}), 500
-    return jsonify({"message": f"Delivery status updated to {new_status}"})
 
+    # 2. NEW LOGIC: Check and update agent status if delivery is complete
+    if new_status == 'Delivered':
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor()
+            try:
+                # Call the stored procedure to check if all orders are complete
+                cursor.callproc('sp_check_and_update_agent_status', (agent_id,))
+                conn.commit()
+            except mysql.connector.Error as proc_err:
+                # Log error but don't fail the main request
+                print(f"Warning: Failed to auto-update agent status: {proc_err}")
+                conn.rollback()
+            finally:
+                cursor.close()
+                conn.close()
+                
+    return jsonify({"message": f"Delivery status updated to {new_status}"})
 # --- ADMIN: ASSIGN AGENT ---
 @app.route('/api/admin/unassigned_orders', methods=['GET'])
 def get_unassigned_orders():

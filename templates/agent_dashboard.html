@@ -72,12 +72,16 @@
                                     <p class="mt-2 text-base font-semibold text-gray-800">Status: ${d.status}</p>
                                 </div>
                                 <div class="mt-4 sm:mt-0 sm:ml-4 flex-shrink-0 flex items-center space-x-2">
+                                    ${d.status === 'Assigned' ? `
                                     <button onclick="updateDeliveryStatus(${d.order_id}, ${d.sub_order_id}, 'Shipped')" class="px-3 py-1 text-sm font-medium rounded-full text-white bg-blue-600 hover:bg-blue-700">
                                         Picked Up
                                     </button>
+                                    ` : ''}
+                                    ${d.status === 'Shipped' ? `
                                     <button onclick="updateDeliveryStatus(${d.order_id}, ${d.sub_order_id}, 'Delivered')" class="px-3 py-1 text-sm font-medium rounded-full text-white bg-green-600 hover:bg-green-700">
                                         Delivered
                                     </button>
+                                    ` : ''}
                                 </div>
                             </div>
                             <div class="mt-6 border-t border-gray-200 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
