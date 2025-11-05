@@ -1,52 +1,95 @@
 # 💊 MediQuick: A Medicine Delivery Management System
 
-**MediQuick** is a comprehensive database management system project simulating an online pharmacy and medicine delivery platform. It demonstrates key DBMS concepts like transaction management, data integrity (Triggers), business logic (Stored Procedures), security (MySQL Roles), and complex queries, all accessed through a multi-user Flask web interface.
+**MediQuick** is a full-stack DBMS project simulating an online pharmacy and medicine delivery workflow.  
+It demonstrates **Stored Procedures**, **Triggers**, **MySQL Roles**, **Transactions**, and **Role-based Access** through a Flask-based multi-user web interface.
 
 ---
 
-## ✨ Features
+## ✨ Core Highlights
 
-The project is built around a secure, role-based architecture and a robust MySQL backend.
+- **MySQL Database Logic**
+  - Transaction-based order processing (`sp_process_cart_to_order_modular`)
+  - Pharmacy assignment logic based on distance & stock
+  - Prescription verification workflow for restricted medicines
+  - Delivery agent auto-assignment logic
 
-### 🔹 Database Core (MySQL)
+- **Triggers**
+  - Auto-updates cart amount & prescription-flag when cart items change
+  - Generates stock alerts when medical stock falls below threshold
 
-- **Stored Procedures (SP):** Critical backend logic includes:
-  - `sp_assign_single_cart_item` — Assigns each medicine to the **nearest well-stocked pharmacy**.
-  - `sp_process_cart_to_order_modular` — Performs validation, stock checks, order creation, and sub-order splitting **inside a transaction**.
-  - `sp_verify_prescription` — Allows doctors to approve/reject prescriptions.
-  - `sp_assign_delivery_agent` — Automatically picks the nearest available agent.
+- **MySQL Security Roles**
+  - `customer_role`, `doctor_role`, `pharmacy_role`, `delivery_role`  
+  - Ensures *principle of least privilege*
 
-- **Triggers** maintain data correctness:
-  - Auto-update `Cart.total_amount` and `requires_prescription` on any `Cart_Item` change.
-  - Create **Low Stock Alerts** when pharmacy inventory falls below threshold.
-
-- **Security:** Implements **MySQL Roles** such as:
-  - `customer_role`, `doctor_role`, `pharmacy_role`, `delivery_role`
-  - Ensures **principle of least privilege**.
-
-- **Reporting Queries:**
-  - Total pharmacy sales + order counts (Admin Dashboard).
-  - List of medicines **never sold**.
-
-### 🧩 Application Layer (Flask)
-
-- **Role-Based Interfaces:** Customer, Doctor, Pharmacy, Delivery Agent dashboards.
-- **CRUD UI:** Medicines & stock management from Admin/Pharmacy panels.
-- **Secure Payment Flow:** `sp_update_payment_status` confirms payment before order processing.
+- **Flask Web Application**
+  - 4 dashboards: Customer, Doctor, Pharmacy, Delivery Agent
+  - CRUD operations on inventory, orders, and verification flows
 
 ---
 
-## 🛠️ Setup and Installation
+## 🛠️ Complete Setup & Execution Guide
 
-### ✅ Prerequisites
+Follow these steps **in exact order** to set up and run the system.
 
-- Python **3.x**
-- **MySQL 8.0+** (required for roles)
-- Flask & MySQL connector (`mysql-connector-python`)
+### ✅ 1. Install Required Software
+| Requirement | Notes |
+|------------|-------|
+| Python **3.x** | Required for Flask application |
+| **MySQL Server 8.0+** | Roles will not work on older versions |
+| pip | Comes with Python |
 
 ---
 
-### 1) Database Setup
+### 2. Clone / Download Project
+
+```bash
+git clone https://github.com/archi829/MediQuick.git
+cd mediquick
+```
+### 3. Database Setup (MySQL)
+
+Open MySQL terminal and create the database:
 
 ```sql
-DROP
+DROP DATABASE IF EXISTS mediquick;
+CREATE DATABASE mediquick;
+USE mediquick;
+```
+
+#### 📦 Database Setup
+
+Run the SQL scripts **in the exact order** below:
+
+| Order | File Name               | Purpose                               |
+|------:|-------------------------|----------------------------------------|
+| 1     | `1_table_creations.sql` | Create tables & constraints            |
+| 2     | `2_roles.sql`           | Create roles & admin user              |
+| 3     | `3_data_population.sql` | Insert sample data & user accounts     |
+| 4     | `4_functions.sql`       | Add helper DB functions                |
+| 5     | `5_triggers.sql`        | Add triggers for consistency           |
+| 6     | `6_procedures.sql`      | Add stored procedures                  |
+| 7 (optional) | `7_tests.sql`    | Validate logic & workflows             |
+
+### Run Using MySQL Workbench **or** Terminal:
+```bash
+mysql -u root -p mediquick < scriptname.sql
+```
+
+### 4. Flask Application Setup
+Install Dependencies
+`pip install -r requirements.txt`
+
+Update DB Credentials (if needed) in app.py
+```sql
+db_config = {
+    'user': 'admin_user',
+    'password': 'adminpass123',
+    'host': '127.0.0.1',
+    'database': 'mediquick'
+}
+```
+
+🚀 Run the Application
+
+Start the Flask server: `python app.py`
+Open in browser: `http://127.0.0.1:5000/`
